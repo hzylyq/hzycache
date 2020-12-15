@@ -3,7 +3,6 @@ package hzycache
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"testing"
 )
 
@@ -22,9 +21,4 @@ func TestHttpPool_ServerHttp(t *testing.T) {
 			}
 			return nil, fmt.Errorf("%s not exist", key)
 		}))
-
-	addr := "localhost:9999"
-	peers := NewHttpPool(addr)
-	log.Println("hzycache is running at", addr)
-	log.Fatal(http.ListenAndServe(addr, peers))
 }
