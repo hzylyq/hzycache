@@ -1,5 +1,4 @@
 language: golang
-go_import_path: github.com/hzycache
 
 os: linux
 sudo: false
