@@ -3,7 +3,7 @@ package hzycache
 import (
 	"sync"
 
-	"github/lrucache/lru"
+	"hzycache/lru"
 )
 
 // cache is a wrapper around an *lru.Cache that adds synchronization,

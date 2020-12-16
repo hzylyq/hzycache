@@ -1,3 +1,3 @@
-module github/lrucache
+module hzycache
 
 go 1.15
