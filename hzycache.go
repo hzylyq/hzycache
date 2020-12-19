@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	"hzycache/singlefight"
 )
 
 // A Getter loads data for a key.
@@ -21,12 +23,15 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 
 // A Group is a cache namespace and associated data loaded spread over
 type Group struct {
-	Name   string
+	name   string
 	getter Getter
 	// mainCache is a cache of the keys
 	mainCache cache
 	// peers is distributed node list
 	peers PeerPicker
+	// use singleflight.Group to make sure that
+	// each key is only fetched once
+	loader *singlefight.Group
 }
 
 var (
@@ -43,11 +48,12 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	mu.Lock()
 	defer mu.Unlock()
 	g := &Group{
-		Name:   name,
+		name:   name,
 		getter: getter,
 		mainCache: cache{
 			cacheBytes: cacheBytes,
 		},
+		loader: &singlefight.Group{},
 	}
 	groupMap[name] = g
 	return g
@@ -83,21 +89,30 @@ func (g *Group) RegisterPeers(peers PeerPicker) {
 }
 
 func (g *Group) load(key string) (ByteView, error) {
-	if g.peers != nil {
-		if peer, ok := g.peers.PickPeer(key); ok {
-			value, err := g.getFromPeer(peer, key)
-			if err == nil {
-				return value, nil
+	// each key is only fetched once (either locally or remotely)
+	// regardless of the number of concurrent callers.
+	viewi, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok {
+				value, err := g.getFromPeer(peer, key)
+				if err == nil {
+					return value, nil
+				}
+				log.Println("[GeeCache] Failed to get from peer", err)
 			}
-			log.Println("[GeeCache] Failed to get from peer", err)
 		}
+
+		return g.getLocally(key)
+	})
+	if err == nil {
+		return viewi.(ByteView), nil
 	}
 
-	return g.getLocally(key)
+	return ByteView{}, err
 }
 
 func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
-	bytes, err := peer.Get(g.Name, key)
+	bytes, err := peer.Get(g.name, key)
 	if err != nil {
 		return ByteView{}, err
 	}
