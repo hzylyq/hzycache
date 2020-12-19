@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log"
 	"testing"
+
+	"hzycache/hzycachepb"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func TestHttpPool_ServerHttp(t *testing.T) {
@@ -21,4 +25,13 @@ func TestHttpPool_ServerHttp(t *testing.T) {
 			}
 			return nil, fmt.Errorf("%s not exist", key)
 		}))
+}
+
+func TestHttpPool_Log(t *testing.T) {
+	body, err := proto.Marshal(&hzycachepb.Response{Value: []byte("aaaaa")})
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(body)
 }

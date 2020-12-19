@@ -5,10 +5,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
+
 	"hzycache/consistenthash"
+	"hzycache/hzycachepb"
 )
 
 const (
@@ -65,8 +69,15 @@ func (p *HttpPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Write the value to the response body as a proto message.
+	body,err := proto.Marshal(&hzycachepb.Response{Value:view.ByteSlice()})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.b)
+	w.Write(body)
 }
 
 // Set updates the pool's list of peers.
@@ -99,27 +110,34 @@ type httpGetter struct {
 }
 
 // Get get from http
-func (h httpGetter) Get(group, key string) ([]byte, error) {
-	url := fmt.Sprintf("%v%v/%v",
-		h.baseURL, group, key)
+func (h httpGetter) Get(in *hzycachepb.Request, out *hzycachepb.Response) error {
+	u := fmt.Sprintf("%v%v/%v",
+		h.baseURL,
+		url.QueryEscape(in.GetGroup()),
+		url.QueryEscape(in.GetKey()))
 
-	res, err := http.Get(url)
+	res, err := http.Get(u)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server return %v", res.Status)
+		return fmt.Errorf("server return %v", res.Status)
 	}
 
 	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response body:%w", err)
+		return fmt.Errorf("reading response body:%w", err)
 	}
 
-	return bytes, nil
+	if err = proto.Unmarshal(bytes, out); err != nil {
+		return fmt.Errorf("decoding response body: %v", err)
+	}
+
+	return nil
 }
 
 // interface check
 var _ PeerGetter = (*httpGetter)(nil)
+var _ PeerPicker = (*HttpPool)(nil)
