@@ -7,7 +7,7 @@ import (
 
 	"hzycache/hzycachepb"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestHttpPool_ServerHttp(t *testing.T) {

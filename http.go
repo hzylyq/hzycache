@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"hzycache/consistenthash"
 	"hzycache/hzycachepb"
@@ -70,14 +70,14 @@ func (p *HttpPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write the value to the response body as a proto message.
-	body,err := proto.Marshal(&hzycachepb.Response{Value:view.ByteSlice()})
+	body, err := proto.Marshal(&hzycachepb.Response{Value: view.ByteSlice()})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 // Set updates the pool's list of peers.
