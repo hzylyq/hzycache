@@ -4,6 +4,8 @@ os: linux
 sudo: false
 
 script:
+  - go get github.com/golangci/golangci-lint/cmd/golangci-lint
+  - golangci-lint run
   - go test ./...
 
 go:
